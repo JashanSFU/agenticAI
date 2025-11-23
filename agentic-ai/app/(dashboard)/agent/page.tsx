@@ -7,64 +7,157 @@
 // export default function AgentPage() {
 //   const [messages, setMessages] = useState<any[]>([]);
 //   const [prompt, setPrompt] = useState("");
+//   const [loading, setLoading] = useState(false);
+
 //   const bottomRef = useRef<HTMLDivElement>(null);
+//   const inputRef = useRef<HTMLInputElement>(null);
+
+//   useEffect(() => {
+//     inputRef.current?.focus();
+//   }, []);
+
+//   useEffect(() => {
+//     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+//   }, [messages, loading]);
+
+//   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+//     if (e.key === "Enter" && !e.shiftKey) {
+//       e.preventDefault();
+//       sendMessage();
+//     }
+//   }
 
 //   async function sendMessage() {
-//     if (!prompt.trim()) return;
+//     if (!prompt.trim() || loading) return;
 
-//     setMessages((prev) => [...prev, { role: "user", text: prompt }]);
+//     const userMsg = {
+//       role: "user",
+//       text: prompt,
+//       ts: new Date(),
+//     };
+//     setMessages((prev) => [...prev, userMsg]);
+
+//     setPrompt("");
+//     setLoading(true);
 
 //     const res = await fetch("/api/agent", {
 //       method: "POST",
-//       body: JSON.stringify({ message: prompt }),
+//       body: JSON.stringify({ message: userMsg.text }),
 //       headers: { "Content-Type": "application/json" },
 //     });
 
 //     const json = await res.json();
 
-//     setMessages((prev) => [...prev, { role: "assistant", text: json.data }]);
+//     const assistantMsg = {
+//       role: "assistant",
+//       text: json.data,
+//       ts: new Date(),
+//     };
 
-//     setPrompt("");
+//     setMessages((prev) => [...prev, assistantMsg]);
+//     setLoading(false);
 //   }
 
-//   useEffect(() => {
-//     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-//   }, [messages]);
-
 //   return (
-//     <div className="max-w-3xl mx-auto flex flex-col h-[85vh]">
-//       <div className="flex-1 overflow-y-auto p-4 bg-muted rounded-lg">
+//     <div className="flex flex-col h-[90vh] max-w-3xl mx-auto py-6 px-4">
+//       {/* HEADER */}
+//       <div className="mb-4 text-center">
+//         <h1 className="text-xl font-semibold text-foreground/90">
+//           Your Personal Agent
+//         </h1>
+//         <p className="text-sm text-muted-foreground">
+//           Ask anything • Schedule • CRM • Tasks
+//         </p>
+//       </div>
+
+//       {/* CHAT AREA */}
+//       <div
+//         className="
+//           flex-1 overflow-y-auto px-4 py-6 rounded-3xl
+//           bg-background/40 backdrop-blur-sm
+//           border border-border/40 shadow-lg
+//           space-y-4
+//         "
+//       >
 //         {messages.map((m, i) => (
 //           <div
 //             key={i}
-//             className={`my-2 ${m.role === "user" ? "text-right" : "text-left"}`}
+//             className={`flex ${
+//               m.role === "user" ? "justify-end" : "justify-start"
+//             }`}
 //           >
-//             <span
-//               className={`inline-block px-3 py-2 rounded-xl text-sm ${
-//                 m.role === "user"
-//                   ? "bg-primary text-primary-foreground"
-//                   : "bg-background border"
-//               }`}
+//             <div
+//               className={`
+//                 max-w-[75%] px-4 py-3 rounded-2xl shadow
+//                 animate-in fade-in slide-in-from-bottom-2 duration-200
+//                 ${
+//                   m.role === "user"
+//                     ? "bg-blue-600 text-white"
+//                     : "bg-white dark:bg-zinc-900 border border-border/50"
+//                 }
+//               `}
 //             >
-//               {m.text}
-//             </span>
+//               <p className="leading-relaxed">{m.text}</p>
+//               <p className="mt-1 text-[10px] opacity-50 text-right">
+//                 {m.ts.toLocaleTimeString([], {
+//                   hour: "2-digit",
+//                   minute: "2-digit",
+//                 })}
+//               </p>
+//             </div>
 //           </div>
 //         ))}
+
+//         {/* TYPING INDICATOR */}
+//         {loading && (
+//           <div className="flex justify-start">
+//             <div
+//               className="
+//                 flex gap-2 items-center px-4 py-3
+//                 bg-white dark:bg-zinc-900 border border-border/50 rounded-2xl shadow-sm
+//               "
+//             >
+//               <span className="w-2 h-2 rounded-full bg-zinc-500 animate-bounce" />
+//               <span className="w-2 h-2 rounded-full bg-zinc-500 animate-bounce delay-150" />
+//               <span className="w-2 h-2 rounded-full bg-zinc-500 animate-bounce delay-300" />
+//             </div>
+//           </div>
+//         )}
+
 //         <div ref={bottomRef} />
 //       </div>
 
-//       <div className="mt-3 flex gap-2">
+//       {/* INPUT AREA */}
+//       <div
+//         className="
+//           flex gap-3 items-center mt-4 p-3 rounded-2xl
+//           bg-background/80 backdrop-blur-xl border shadow-md
+//           sticky bottom-4 z-10
+//         "
+//       >
 //         <Input
-//           placeholder="Ask the agent anything..."
+//           ref={inputRef}
 //           value={prompt}
 //           onChange={(e) => setPrompt(e.target.value)}
+//           onKeyDown={handleKeyDown}
+//           placeholder="Message your agent..."
+//           className="flex-1 rounded-xl bg-muted/40 border-none focus-visible:ring-0"
 //         />
-//         <Button onClick={sendMessage}>Send</Button>
+//         <Button
+//           onClick={sendMessage}
+//           disabled={loading}
+//           className="rounded-xl px-6 shadow-md"
+//         >
+//           {loading ? (
+//             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+//           ) : (
+//             "Send"
+//           )}
+//         </Button>
 //       </div>
 //     </div>
 //   );
 // }
-
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -79,25 +172,24 @@ export default function AgentPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-focus input on load
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  // Enter to send
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  }
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
 
   async function sendMessage() {
     if (!prompt.trim() || loading) return;
 
-    const userMsg = { role: "user", text: prompt, ts: new Date(), anim: true };
-    setMessages((prev) => [...prev, userMsg]);
+    const userMsg = {
+      role: "user",
+      text: prompt,
+      ts: new Date(),
+    };
 
+    setMessages((prev) => [...prev, userMsg]);
     setPrompt("");
     setLoading(true);
 
@@ -113,49 +205,52 @@ export default function AgentPage() {
       role: "assistant",
       text: json.data,
       ts: new Date(),
-      anim: true,
     };
 
     setMessages((prev) => [...prev, assistantMsg]);
     setLoading(false);
   }
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
   return (
-    <div className="flex flex-col h-[85vh] px-4">
-      {/* Chat Area */}
+    <div className="flex flex-col h-[90vh] max-w-3xl mx-auto py-6 px-4">
+      {/* HEADER */}
+      <div className="mb-4 text-center">
+        <h1 className="text-xl font-semibold text-foreground/90">
+          Your Personal Agent
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Ask anything • Automations • CRM • Scheduling
+        </p>
+      </div>
+
+      {/* CHAT AREA */}
       <div
         className="
-        flex-1 overflow-y-auto p-6 
-        rounded-xl border shadow-inner backdrop-blur-sm 
-        bg-gradient-to-b from-muted/60 to-muted/20 
-        dark:from-zinc-900/60 dark:to-zinc-900/20
-      "
+          flex-1 overflow-y-auto px-4 py-6 rounded-3xl
+          bg-card/50 backdrop-blur-sm border border-border shadow-lg
+          space-y-4
+        "
       >
         {messages.map((m, i) => (
           <div
             key={i}
-            className={`my-3 flex ${
+            className={`flex ${
               m.role === "user" ? "justify-end" : "justify-start"
             }`}
           >
             <div
               className={`
-                max-w-[75%] px-4 py-3 rounded-2xl text-sm shadow-sm 
-                transition-all duration-300 
-                animate-in fade-in slide-in-from-bottom-2  
+                max-w-[75%] px-4 py-3 rounded-[var(--radius-xl)] shadow
+                animate-in fade-in slide-in-from-bottom-2 duration-200
                 ${
                   m.role === "user"
                     ? "bg-primary text-primary-foreground"
-                    : "bg-white dark:bg-zinc-800 border dark:border-zinc-700"
+                    : "bg-muted text-foreground border border-border"
                 }
               `}
             >
-              <p>{m.text}</p>
-              <p className="mt-1 text-[10px] opacity-60 text-right">
+              <p className="leading-relaxed">{m.text}</p>
+              <p className="mt-1 text-[10px] opacity-50 text-right">
                 {m.ts.toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
@@ -165,18 +260,18 @@ export default function AgentPage() {
           </div>
         ))}
 
-        {/* Typing Bubbles */}
+        {/* TYPING INDICATOR */}
         {loading && (
-          <div className="flex justify-start my-3">
+          <div className="flex justify-start">
             <div
               className="
-              bg-white dark:bg-zinc-800 border px-4 py-3 rounded-2xl shadow-sm 
-              flex gap-2 animate-fade-in
-            "
+                flex gap-2 items-center px-4 py-3
+                bg-muted border border-border rounded-[var(--radius-xl)]
+              "
             >
-              <span className="w-2 h-2 bg-zinc-500 dark:bg-zinc-300 rounded-full animate-bounce"></span>
-              <span className="w-2 h-2 bg-zinc-500 dark:bg-zinc-300 rounded-full animate-bounce delay-150"></span>
-              <span className="w-2 h-2 bg-zinc-500 dark:bg-zinc-300 rounded-full animate-bounce delay-300"></span>
+              <span className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" />
+              <span className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce delay-150" />
+              <span className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce delay-300" />
             </div>
           </div>
         )}
@@ -184,23 +279,33 @@ export default function AgentPage() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="mt-4 flex gap-3 items-center sticky bottom-0 py-2 bg-background/80 backdrop-blur-md">
+      {/* INPUT AREA */}
+      <div
+        className="
+          flex gap-3 items-center mt-4 p-3 rounded-[var(--radius-xl)]
+          bg-background/80 backdrop-blur-xl border border-border shadow-md
+          sticky bottom-4 z-10
+        "
+      >
         <Input
           ref={inputRef}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Ask the Agent to schedule, manage CRM, plan tasks..."
-          className="flex-1 rounded-xl shadow-sm"
+          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          placeholder="Message your agent..."
+          className="
+            flex-1 rounded-xl bg-muted/40 text-foreground
+            border border-input focus-visible:ring-ring
+          "
         />
+
         <Button
           onClick={sendMessage}
           disabled={loading}
-          className="rounded-xl min-w-[72px] flex justify-center"
+          className="rounded-xl px-6 shadow-md"
         >
           {loading ? (
-            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
           ) : (
             "Send"
           )}

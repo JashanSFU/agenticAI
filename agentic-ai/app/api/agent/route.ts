@@ -62,9 +62,9 @@ TOOL DEFINITIONS (exact):
 
 create-meeting({
   title: string,
-  date: string,
-  time: string,
-  attendees: string[]
+  attendees?: string[],
+  date_phrase?: string,
+  time_phrase?: string
 })
 
 list-meetings()
