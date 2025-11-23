@@ -16,6 +16,38 @@ const TOOL_ENDPOINTS: Record<string, string> = {
   "add-lead": "/api/mcp/crm/add-lead",
   "update-lead": "/api/mcp/crm/update-lead",
   "query-leads": "/api/mcp/crm/query-leads",
+
+  "create-note": "/api/mcp/notes/create",
+  "list-notes": "/api/mcp/notes/list",
+  "get-note": "/api/mcp/notes/get",
+
+  "create-task": "/api/mcp/tasks/create",
+  "list-tasks": "/api/mcp/tasks/list",
+  "update-task": "/api/mcp/tasks/update",
+  "complete-task": "/api/mcp/tasks/complete",
+
+  "add-journal": "/api/mcp/journal/add",
+  "list-journal": "/api/mcp/journal/list",
+  "get-journal-by-date": "/api/mcp/journal/by-date",
+
+  "create-habit": "/api/mcp/habits/create",
+  "list-habits": "/api/mcp/habits/list",
+  "log-habit": "/api/mcp/habits/log",
+  "habit-logs": "/api/mcp/habits/logs-by-habit",
+
+  "graph-add-node": "/api/mcp/graph/add-node",
+  "graph-add-edge": "/api/mcp/graph/add-edge",
+  "graph-list": "/api/mcp/graph/list",
+  "graph-related": "/api/mcp/graph/get-related",
+
+  "memory-add-vector": "/api/mcp/memory/add-vector",
+  "memory-search": "/api/mcp/memory/search",
+
+  "insights": "/api/mcp/insights",
+
+  "reflection-daily": "/api/mcp/reflection/daily",
+  "reflection-weekly": "/api/mcp/reflection/weekly",
+  "autoschedule": "/api/mcp/reflection/autoschedule",
 };
 
 // -------------------------------------------------------
@@ -52,7 +84,15 @@ You MUST respond ONLY using the following JSON structure:
 
 {
   "tool": "create-meeting" | "list-meetings" | "cancel-meeting" |
-           "add-lead" | "update-lead" | "query-leads" |
+           "add-lead" | "update-lead" | "query-leads" | 
+           "create-note" | "list-notes" | "get-note" | 
+           "create-task" | "list-tasks" | "update-task" | "complete-task" | 
+           "add-journal" | "list-journal" | "get-journal-by-date" |
+           "create-habit" | "list-habits" | "log-habit" | "habit-logs" |
+           "graph-add-node" | "graph-add-edge" | "graph-list" | "graph-related" |
+           "memory-add-vector" | "memory-search" | 
+           "insights" |
+           "reflection-daily" | "reflection-weekly" | "autoschedule" |
            null,
   "args": object,
   "final": string
@@ -93,6 +133,104 @@ query-leads({
     status?: string
   }
 })
+
+create-note({
+  title: string,
+  content: string,
+  tags?: string[]
+})
+
+list-notes()
+
+get-note({
+  id: string
+})
+
+create-task({
+  title: string,
+  description?: string,
+  priority?: "low" | "medium" | "high",
+  dueDate?: string,
+  projectId?: string
+})
+
+list-tasks()
+
+update-task({
+  id: string,
+  ...fields
+})
+
+complete-task({
+  id: string
+})
+
+add-journal({
+  content: string,
+  mood?: "great" | "good" | "okay" | "bad" | "awful",
+  topics?: string[]
+})
+
+list-journal()
+
+get-journal-by-date({
+  date: string
+})
+
+create-habit({
+  name: string,
+  description?: string,
+  targetPerWeek?: number
+})
+
+list-habits()
+
+log-habit({
+  habitId: string,
+  note?: string,
+  value?: number
+})
+
+habit-logs({
+  habitId: string
+})
+
+graph-add-node({
+  type: string,
+  label: string,
+  refId?: string
+})
+
+graph-add-edge({
+  from: string,
+  to: string,
+  kind?: "related-to" | "mentioned-in" | "depends-on" | "part-of" | "duplicate-of" | "causes" | "blocks"
+})
+
+graph-list()
+
+graph-related({
+  id: string
+})
+
+memory-add-vector({
+  refType: string,
+  refId: string,
+  text: string
+})
+
+memory-search({
+  query: string,
+  limit?: number
+})
+
+insights()
+
+reflection-daily()
+
+reflection-weekly()
+
+autoschedule()
 
 STRICT RULES:
 - ALWAYS wrap lead filters inside { "filter": { ... } }.
