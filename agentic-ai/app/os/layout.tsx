@@ -22,10 +22,16 @@ export default function OSLayout({ children }: { children: React.ReactNode }) {
           <a href="/os/habits" className="text-sm hover:text-primary">
             Habits
           </a>
+          <a href="/os/leads" className="text-sm hover:text-primary">
+            Leads
+          </a>
+          <a href="/os/meetings" className="text-sm hover:text-primary">
+            Meetings
+          </a>
           <a href="/os/graph" className="text-sm hover:text-primary">
             Graph
           </a>
-          <a href="/dashboard/agent" className="text-sm hover:text-primary">
+          <a href="/os/agent" className="text-sm hover:text-primary">
             Agent
           </a>
         </nav>
