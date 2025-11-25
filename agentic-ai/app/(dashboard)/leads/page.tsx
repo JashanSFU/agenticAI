@@ -7,7 +7,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function LeadsPage() {
-  const { data: leads } = useSWR("/api/debug/leads", fetcher);
+  const { data } = useSWR("/api/debug/leads", fetcher);
+
+  const leads = data?.leads ?? [];
 
   return (
     <div>
@@ -25,7 +27,7 @@ export default function LeadsPage() {
           </thead>
 
           <tbody>
-            {!leads?.length && (
+            {leads.length === 0 && (
               <tr>
                 <td
                   colSpan={4}
@@ -36,14 +38,14 @@ export default function LeadsPage() {
               </tr>
             )}
 
-            {leads?.map((l: any) => (
+            {leads.map((l: any) => (
               <tr key={l.id} className="border-b hover:bg-muted/30">
                 <td className="py-3">{l.name}</td>
                 <td>{l.company || "-"}</td>
                 <td className="text-xs">{l.email || "-"}</td>
                 <td>
                   <Badge variant="outline" className="capitalize">
-                    {l.status}
+                    {l.status || "new"}
                   </Badge>
                 </td>
               </tr>
