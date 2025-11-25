@@ -5,6 +5,7 @@
 import * as dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import * as chrono from "chrono-node";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, ".env") });
@@ -267,10 +268,14 @@ server.registerTool(
     inputSchema: z.object({ query: z.string() }),
   },
   safeTool(async ({ query }) => {
-    const dt = new Date(query);
-    if (isNaN(dt.getTime())) return { ok: false, error: "Could not parse date." };
+    const parsed = chrono.parseDate(query);
 
-    const iso = dt.toISOString().replace(".000Z", "+00:00");
+    if (!parsed) {
+      return { ok: false, error: "Could not parse date." };
+    }
+
+    const iso = parsed.toISOString().replace(".000Z", "+00:00");
+
     return { ok: true, data: { iso } };
   })
 );
@@ -313,6 +318,7 @@ server.registerTool(
     }
   })
 );
+// console.log("🧩 MCP TOOL CALLED:", tool, args);
 
 // ====================================================================
 // START MCP SERVER

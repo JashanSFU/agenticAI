@@ -1,268 +1,8 @@
-// // ====================================================================
-// // AgenticAI — Fully Upgraded Smart Agent (SAFE + TIMEZONE AWARE VERSION)
-// // ====================================================================
-
-// import Groq from "groq-sdk";
-
-// // -------------------------------------------------------------
-// // STATE MEMORY
-// // -------------------------------------------------------------
-// let memory: ChatMessage[] = [];
-
-// type ChatMessage = {
-//   role: "system" | "assistant" | "user";
-//   content: string;
-// };
-
-// // -------------------------------------------------------------
-// // USER TIMEZONE CONTEXT
-// // -------------------------------------------------------------
-// function getTimeContext() {
-//   const now = new Date();
-
-//   const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
-//   const userLocal = new Intl.DateTimeFormat("en-US", {
-//     timeZone: userTZ,
-//     hour12: false,
-//     year: "numeric",
-//     month: "2-digit",
-//     day: "2-digit",
-//     hour: "2-digit",
-//     minute: "2-digit",
-//     second: "2-digit",
-//   }).format(now);
-
-//   return `
-// TIME CONTEXT:
-// UTC now: ${now.toISOString()}
-// User timezone: ${userTZ}
-// User local time: ${userLocal}
-// `;
-// }
-
-// // -------------------------------------------------------------
-// // SAFE TOOL CALL WRAPPER
-// // -------------------------------------------------------------
-// async function callMCPTool(tool: string, args: any) {
-//   if (!args || typeof args !== "object") {
-//     return {
-//       ok: false,
-//       error: `Invalid Action Input for tool '${tool}'.`,
-//     };
-//   }
-
-//   const res = await fetch("http://localhost:3000/api/mcp", {
-//     method: "POST",
-//     headers: { "Content-Type": "application/json" },
-//     body: JSON.stringify({ tool, args }),
-//   });
-
-//   const json = await res.json();
-//   return json.result;
-// }
-
-// // -------------------------------------------------------------
-// // CONTEXT LOADER — Prevents hallucination
-// // -------------------------------------------------------------
-// async function gatherContext() {
-//   const [events, leads, docs] = await Promise.all([
-//     callMCPTool("calendar.list", {}),
-//     callMCPTool("crm.queryLeads", { filter: {} }),
-//     callMCPTool("docs.listDocuments", {}),
-//   ]);
-
-//   return {
-//     meetings: events?.ok ? events.data.events : [],
-//     leads: leads?.ok ? leads.data.leads : [],
-//     docs: docs?.ok ? docs.data.docs : [],
-//   };
-// }
-
-// // -------------------------------------------------------------
-// // ROBUST PARSERS — tolerate multiline JSON
-// // -------------------------------------------------------------
-// function extractThought(out: string) {
-//   const idx = out.indexOf("Thought:");
-//   if (idx === -1) return "";
-//   const after = out.slice(idx + 8);
-//   const finalIdx = after.indexOf("Final Answer:");
-//   return (finalIdx === -1 ? after : after.slice(0, finalIdx))
-//     .replace(/Action:[\s\S]*/m, "")
-//     .trim();
-// }
-
-// function extractAction(out: string) {
-//   const match = out.match(/Action:\s*([^\n]+)/);
-//   return match ? match[1].trim() : null;
-// }
-
-// function extractActionInput(out: string) {
-//   const marker = "Action Input:";
-//   const idx = out.indexOf(marker);
-//   if (idx === -1) return null;
-
-//   const chunk = out.slice(idx + marker.length).trim();
-//   const start = chunk.indexOf("{");
-//   const end = chunk.lastIndexOf("}");
-
-//   if (start === -1 || end === -1 || end <= start) return null;
-
-//   try {
-//     return JSON.parse(chunk.slice(start, end + 1));
-//   } catch {
-//     return null;
-//   }
-// }
-
-// function extractFinal(out: string) {
-//   const idx = out.indexOf("Final Answer:");
-//   return idx === -1 ? "" : out.slice(idx + 13).trim();
-// }
-
-// // -------------------------------------------------------------
-// // SYSTEM PROMPT (UPGRADED SAFE + TIMEZONE VERSION)
-// // -------------------------------------------------------------
-// const SYSTEM_PROMPT = `
-// You are AgenticAI — a smart, context-aware business assistant.
-
-// STRICT RULES:
-
-// 1. NEVER invent meetings, leads, or documents.
-// 2. NEVER compute dates manually.
-// 3. ALWAYS use dates.parseNatural for:
-//    - "in 5 days"
-//    - "next Monday"
-//    - "this Friday at 6pm PST"
-//    - "tomorrow evening"
-// 4. ALWAYS account for user timezone (provided in TIME CONTEXT).
-// 5. Calendar events REQUIRE:
-//    {
-//      "title": "...",
-//      "description": "...?",
-//      "start_time": "YYYY-MM-DD HH:mm:ss",
-//      "end_time": "YYYY-MM-DD HH:mm:ss",
-//      "attendees": []
-//    }
-// 6. If "end_time" is missing → DEFAULT duration = 1 hour.
-// 7. If ANY required field missing:
-//    → DO NOT call the tool.
-//    → Ask the user for missing details.
-// 8. When rescheduling → ALWAYS use calendar.reschedule.
-// 9. NEVER output placeholders like {{now}}, {{date}}, {{current_date}}.
-// 10. Always verify the meeting exists before modifying it.
-
-// TOOLS AVAILABLE:
-// - crm.addLead
-// - crm.updateLead
-// - crm.queryLeads
-// - calendar.create
-// - calendar.cancel
-// - calendar.reschedule
-// - calendar.list
-// - docs.addDocument
-// - docs.listDocuments
-// - dates.parseNatural
-
-// REQUIRED FORMAT:
-
-// If NO tool:
-// Thought: ...
-// Final Answer: ...
-
-// If TOOL IS REQUIRED:
-// Thought: ...
-// Action: tool_name
-// Action Input: { ...valid JSON... }
-// Final Answer: ...
-// `;
-
-// // -------------------------------------------------------------
-// // RUN AGENT
-// // -------------------------------------------------------------
-// export async function runAgent(message: string) {
-//   const context = await gatherContext();
-
-//   const ctx = `
-// ${getTimeContext()}
-
-// CONTEXT SNAPSHOT:
-// Meetings:
-// ${JSON.stringify(context.meetings, null, 2)}
-
-// Leads:
-// ${JSON.stringify(context.leads, null, 2)}
-
-// Documents:
-// ${JSON.stringify(context.docs, null, 2)}
-// `;
-
-//   memory.push({ role: "system", content: ctx });
-//   memory.push({ role: "user", content: message });
-
-//   const groq = new Groq({ apiKey: process.env.GROQ_API_KEY! });
-
-//   const completion = await groq.chat.completions.create({
-//     model: "llama-3.1-8b-instant",
-//     temperature: 0.25,
-//     messages: [{ role: "system", content: SYSTEM_PROMPT }, ...memory],
-//   });
-
-//   const out = completion.choices[0].message.content || "";
-
-//   const thought = extractThought(out);
-//   const action = extractAction(out);
-//   const actionInput = extractActionInput(out);
-//   let final = extractFinal(out);
-
-//   // If tool is required but missing data → ask user
-//   if (action && (!actionInput || typeof actionInput !== "object")) {
-//     const ask = 
-// `I can do that, but I need a bit more information first.
-
-// What should I name this meeting?`;
-    
-//     memory.push({ role: "assistant", content: ask });
-
-//     return {
-//       toolUsed: null,
-//       toolArgs: null,
-//       toolResult: null,
-//       agentThought: thought,
-//       final: ask,
-//     };
-//   }
-
-//   // If no tool is required
-//   if (!action) {
-//     memory.push({ role: "assistant", content: final });
-//     return { toolUsed: null, toolArgs: null, toolResult: null, agentThought: thought, final };
-//   }
-
-//   // Otherwise execute tool
-//   const result = await callMCPTool(action, actionInput);
-
-//   if (final.includes("{{toolResult}}")) {
-//     final = final.replace("{{toolResult}}", JSON.stringify(result, null, 2));
-//   }
-
-//   memory.push({ role: "assistant", content: final });
-
-//   return {
-//     toolUsed: action,
-//     toolArgs: actionInput,
-//     toolResult: result,
-//     agentThought: thought,
-//     final,
-//   };
-// }
-// ====================================================================
-// AgenticAI — Smart Helper Agent (Multi-Action, Safe, Timezone-Aware)
-// ====================================================================
-
 // ====================================================================
 // AgenticAI — Smart Helper Agent (Multi-Action, Safe, Timezone-Aware)
 // ====================================================================
 import Groq from "groq-sdk";
+import { getEmailContext } from "@/lib/agent/emailContext";
 
 // -----------------------------------------------------------------------------
 // Agent State
@@ -308,6 +48,22 @@ async function gatherContext() {
     docs: docs?.ok ? docs.data.docs : [],
   };
 }
+
+// async function gatherContext() {
+//   const [events, leads, docs, emails] = await Promise.all([
+//     callMCPTool("calendar.list", {}),
+//     callMCPTool("crm.queryLeads", { filter: {} }),
+//     callMCPTool("docs.listDocuments", {}),
+//     getEmailContext(10), // fetch 10 recent unread emails
+//   ]);
+
+//   return {
+//     meetings: events?.ok ? events.data.events : [],
+//     leads: leads?.ok ? leads.data.leads : [],
+//     docs: docs?.ok ? docs.data.docs : [],
+//     emails: emails || [],
+//   };
+// }
 
 // -----------------------------------------------------------------------------
 // Vancouver Time Context
@@ -387,11 +143,57 @@ async function parseToVancouverISO(natural: string) {
   return { start, end };
 }
 
+// EMAILS:
+// • You receive parsed Gmail emails in the context.
+// • Use emails to detect:
+//     - meetings or upcoming events
+//     - reminders or tasks
+//     - job leads / sales leads
+//     - bills or important items
+// • If user asks “do I have meetings?” or “any important emails?”
+//   → analyze the emails in context.
+// • You never invent emails. Only use the real Gmail context.
 // -----------------------------------------------------------------------------
 // SYSTEM PROMPT – Swarm Planner (Condensed Schema)
 // -----------------------------------------------------------------------------
 const SYSTEM_PROMPT = `
-You are AgenticAI — a Swarm-style planner.
+You are Business Support and AgenticAI — a deterministic, safe, multi-action planning agent.
+
+Your job is to translate user requests into a SEQUENCE OF TOOL CALLS
+to help them manage their calendar, CRM leads, and documents.
+If you can answer directly without tools, do so.
+
+====================================================================
+GENERAL INSTRUCTIONS
+====================================================================
+Your job is to translate the user's request into a minimal set of valid tool
+calls. You NEVER add unnecessary actions, NEVER invent data, and NEVER chain
+dependent operations unless the user explicitly tells you to.
+
+### LISTING DATA FROM CONTEXT (NO TOOL CALLS)
+• If the user asks things like:
+    - "list all leads"
+    - "show my leads"
+    - "what appointments do I have"
+    - "any meetings today?"
+    - "show documents"
+  → DO NOT call any tools.
+  → Use ONLY the data in CONTEXT to answer.
+  → Output:
+      { "plan": [], "final": "Here is the list..." }
+
+You are free to question the user for missing information if you cannot
+proceed. Always aim to minimize tool calls and avoid unnecessary actions.
+
+You ALWAYS respond in the OUTPUT FORMAT below. 
+
+if you cannot understand the request, output an empty plan and
+ask the user to rephrase.
+
+Never leave a final response empty. Always provide a human-friendly summary.
+====================================================================
+OUTPUT FORMAT
+====================================================================
 
 You ALWAYS output valid JSON:
 
@@ -402,22 +204,50 @@ You ALWAYS output valid JSON:
   "final": "Human-friendly summary"
 }
 
-If a tool cannot be executed yet, return:
-
+If no tool is needed:
 {
   "plan": [],
-  "final": "A clarifying question to user"
+  "final": "Helpful natural-language response"
 }
 
-If no tool is needed:
-
+If required information is missing:
 {
   "plan": [],
-  "final": "A normal helpful response"
+  "final": "A clarifying question to the user"
 }
 
 ====================================================================
-TOOL SCHEMA (Condensed)
+CRITICAL SAFETY RULES
+====================================================================
+
+### 1. NEVER invent IDs
+• If a tool requires an "id" and it is not provided and not available in context,
+  you MUST ask the user for the ID.
+• You NEVER create placeholder IDs (e.g. “123”, “new-lead-id”, "generated-id").
+
+### 2. NO dependent multi-step sequences
+• Tools cannot use the result of another tool in the same plan.
+  Example (NOT ALLOWED):
+    - Add a lead
+    - Immediately update it
+• If the user wants chained actions, you MUST ask them to specify the real ID.
+
+### 3. MINIMAL TOOL CALLS ONLY
+• Only call tools when absolutely necessary.
+• If the user asks for a meeting and a lead, create exactly those two actions.
+• NO redundant actions.
+
+### 4. DO NOT INVENT EMAILS, MEETINGS, LEADS OR DOCUMENTS
+• You rely ONLY on the provided context.
+• If something isn’t found in context, don’t guess — ask.
+
+### 5. TIME & DATE RULES
+• ALWAYS use dates.parseNatural for natural-language dates.
+• ALWAYS convert timestamps to America/Vancouver.
+• Meetings default to 1 hour unless user says otherwise.
+
+====================================================================
+TOOL SCHEMA (Reference)
 ====================================================================
 
 crm.addLead:
@@ -450,22 +280,47 @@ docs.addDocument:
 docs.listDocuments: {}
 
 dates.parseNatural:
-  required → query (raw natural text)
+  required → query
 
 ====================================================================
-RULES
+HOW TO THINK (REASONING STRATEGY)
 ====================================================================
 
-• ALWAYS use dates.parseNatural for natural language dates.
-• ALWAYS convert timestamps to America/Vancouver.
-• NEVER invent meetings, leads, or documents.
-• ALWAYS ask clarifying questions when required fields missing.
-• MULTI-ACTION:
-    "Add 5 leads" → 5 plan entries
-    "Create 3 meetings" → 3 plan entries
+1. Understand the user request.
+2. Determine if any tools are needed.
+3. For each required action:
+   • Identify missing information
+   • Ask clarifying questions ONLY if needed
+4. Produce the minimal plan (never more)
+5. Produce a simple final summary.
 
 ====================================================================
-END RULES
+EXAMPLES
+====================================================================
+
+User: "make a meeting and add as lead John from Las Vegas"
+→ VALID:
+{
+  "plan": [
+    { "tool": "crm.addLead", "args": { "name": "John", "company": "Las Vegas" }},
+    {
+      "tool": "calendar.create",
+      "args": {
+        "title": "Meeting with John",
+        "natural": "today",
+        "attendees": []
+      }
+    }
+  ],
+  "final": "Added John as a lead and created your meeting."
+}
+
+User: "update the lead"
+→ INVALID (missing ID)
+→ Ask: "Which lead ID would you like to update?"
+
+====================================================================
+END OF SYSTEM PROMPT
 ====================================================================
 `;
 
@@ -510,6 +365,7 @@ ${JSON.stringify(ctx, null, 2)}
 
   const plan = json.plan || [];
   const results: any[] = [];
+// console.log("🧪 RAW PLAN FROM LLM:", JSON.stringify(plan, null, 2));
 
   // ---------------------------------------------------------------------------
   // Execute all actions in order
@@ -517,6 +373,28 @@ ${JSON.stringify(ctx, null, 2)}
   for (const step of plan) {
     const { tool, args } = step;
 
+    // -------------------------------------
+  // 🔧 FIX: Resolve lead name → ID (UUID)
+  // -------------------------------------
+  if (tool === "crm.updateLead" && args.name && !args.id) {
+    const normalized = args.name.toLowerCase().trim();
+
+    const match = ctx.leads.find((l: any) =>
+      l.name.toLowerCase().trim() === normalized
+    );
+
+    if (match) {
+      args.id = match.id;   // inject UUID
+      delete args.name;     // prevent MCP confusion
+    } else {
+      // Ask user for ID if lead not found
+      return {
+        plan: [],
+        results: [],
+        final: `I couldn’t find a lead named "${args.name}". Can you provide the lead ID?`,
+      };
+    }
+  }
     // Natural-date → Vancouver conversion
     if (
       (tool === "calendar.create" || tool === "calendar.reschedule") &&
@@ -545,6 +423,7 @@ ${JSON.stringify(ctx, null, 2)}
   }
 
   memory.push({ role: "assistant", content: json.final });
+console.log("🧪 AGENT RESULT:", { plan, results, final: json.final });
 
   return {
     plan,
